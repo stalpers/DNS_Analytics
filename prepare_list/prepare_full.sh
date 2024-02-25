@@ -12,17 +12,9 @@ export DOMCOP_ZIP=top10milliondomains.csv.zip
 export DOMCOP=top10milliondomains.csv
 export DATA=./normalize/all_domains.txt
 
-#enable DOMCOP Top10million - significantly impacts performance
-export ENABLE_TOP10MILLION=0
-
 #Quiet
 export ZIP_FLAGS=-qo
 # export ZIP_FLAGS=
-
-
-mkdir -p "$DPATH"
-mkdir -p normalize
-
 
 log info Download Alexa Top 1000 TLDs to $DPATH/$ALEXA_ZIP
 wget -q http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip -O "$DPATH"/"$ALEXA_ZIP"
@@ -52,18 +44,8 @@ log info "Unzip $DOMCOP_ZIP"
 unzip $ZIP_FLAGS "$DPATH"/"$DOMCOP_ZIP"
 cp "$DPATH"/"$MM" .
 
-log info "Extracting failed domains from previous runs"
-perl extract_failed.pl --file ../spf.log > ignore.txt
-
-
-if [ $ENABLE_TOP10MILLION -ge 1 ]
-then
 log info "Normalize $DOMCOP to normalize/01.txt"
 perl normalizer.pl --file=$DOMCOP > ./normalize/01.txt
-else
- log info "Skipping Top10 Million - $DOMCOP"
-fi
-
 log info "Normalize  Majestic Million to normalize/02.txt"
 cat "$MM" | cut -d',' -f2,3  > ./normalize/tmp1
 perl normalizer.pl --file=./normalize/tmp1 > ./normalize/02.txt
