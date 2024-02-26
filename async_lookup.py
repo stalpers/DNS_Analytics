@@ -124,7 +124,7 @@ class DnsResolver:
                 r = await resolver.query(domain, record_type)
 
             except Exception as e:
-                logger.warning(f'Failed to Query Domain {domain} for type {record_type}: {e}')
+                logger.warning(f'Failed to Query Domain;{domain};{record_type};{e}')
                 return {'domain': domain, 'result': None}
             return {'domain': domain, 'result': r}
 
@@ -141,7 +141,9 @@ class DnsResolver:
                     try:
                         if response['result']:
                             for entry in response['result']:
-                                result_line = f'TXT,{entry.text},{response["domain"]}\n'
+                                d = response["domain"]
+                                result_line = f"'{record_type}','{entry.text}','{d}'\n"
+                                # result_line = f'TXT,{entry.text},{response["domain"]}\n'
                                 await f.write(result_line)
 
 
