@@ -1,7 +1,15 @@
 /export/
-/prepare_list/majestic_million.csv
-/test_domains.txt
+/export*.
+/prepare_list/*.csv
+/prepare_list/download/*
+/prepare_list/normalize/*
+/domains.example
 /domains.txt
 /count.txt
 /arguments.txt
 /activity.log
+/spf.log
+/ddclient.conf
+/*.log
+/domains_10million.txt
+/*.tgz

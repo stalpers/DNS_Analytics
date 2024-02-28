@@ -32,5 +32,13 @@ Domain list 0000000000/2: 100%|████████████████�
 ### Compiling Domain data ###
 
 The directory ```prepare``` hosts the necessary infrastructure to generate huge DNS data dictionaries as a foundation for analytics.
-While the script ```prepare.sh``` will take care of all downloading an normalizing the final result will be stored as ```all_domains.txt``` in tthe ```normalize``` directory 
-Note: ```prepare.sh``` is limited to a number of "top1 million" lists. If you are considering an even broader view, ```prepare_full.sh``` might be a better choice sionce it will incorporate a "Top 10 million". But be aware that the lookup will take a considerable amount of time!
+While the script ```prepare.sh``` will take care of all downloading an normalizing the final result will be stored as ```all_domains.txt``` in the ```normalize``` directory 
+
+```
+Usage: prepare.sh [-d] [-m] [-h]
+Download, consolidate and normalize DNS information
+
+-d      Enable debug messages
+-m      Include DomCoP Top 10 Million Domain List
+-h      Show this help message
+```

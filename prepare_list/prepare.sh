@@ -2,6 +2,30 @@
 # prepare list
 source log.sh
 
+export OPTIND=1
+
+export DO_DOMCOP=0
+export DEBUG=0
+
+while getopts "h?m?d?:" opt; do
+  case "$opt" in
+    h|\?)
+      echo "Usage: prepare.sh [-d] [-m] [-h]"
+      echo "Download, consolidate and normalize DNS information"
+      echo " "
+      echo "-d      Enable debug messages"
+      echo "-m      Include DomCoP Top 10 Million Domain List"
+      echo "-h     Show this help message"
+      exit 0
+      ;;
+    m)  DO_DOMCOP=1
+      ;;
+    d)  DEBUG=1
+      ;;
+  esac
+done
+
+
 export DPATH=./download
 export MM=majestic_million.csv
 export TRANCO_ZIP=tranco.csv.zip
@@ -12,57 +36,38 @@ export DOMCOP_ZIP=top10milliondomains.csv.zip
 export DOMCOP=top10milliondomains.csv
 export DATA=./normalize/all_domains.txt
 
-#enable DOMCOP Top10million - significantly impacts performance
-export ENABLE_TOP10MILLION=0
-
 #Quiet
 export ZIP_FLAGS=-qo
 # export ZIP_FLAGS=
 
-
-mkdir -p "$DPATH"
-mkdir -p normalize
-
-
-log info Download Alexa Top 1000 TLDs to $DPATH/$ALEXA_ZIP
-wget -q http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip -O "$DPATH"/"$ALEXA_ZIP"
+log info "Starting to download input data"
+log info "Download Alexa Top 1000 TLD..."
+wget -q http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip -O "$DPATH"/"$ALEXA_ZIP" && log debug "Successfully downloaded Alexa Top 1000 TLDs to $DPATH/$ALEXA_ZIP" || log err "Failed to download Alexa Top 1000 TLDs"
 
 
-log info "Download Majestic Million to $MM"
-wget -q https://downloads.majestic.com/majestic_million.csv -O "$DPATH"/"$MM"
+log info "Download Majestic Million..."
+wget -q https://downloads.majestic.com/majestic_million.csv -O "$DPATH"/"$MM" && log debug "Successfully downloaded Majestic Million to $MM" || log err "Failed to download Majestic Million"
 
+log info "Download Tranco List..."
+wget -q https://tranco-list.eu/download_daily/Z32PG -O "$DPATH"/"$TRANCO_ZIP"  && log debug "Successfully downloaded Tranco List to $TRANCO_ZIP" || log err "Failed to download Tranco List"
 
-
-log info "Download tranco List to $TRANCO_ZIP"
-
-wget -q https://tranco-list.eu/download_daily/Z32PG -O "$DPATH"/"$TRANCO_ZIP"
-
-
-log info "DomCom Top 10 million Websites to $DOMCOP_ZIP"
-
- wget -q https://www.domcop.com/files/top/top10milliondomains.csv.zip -O "$DPATH"/"$DOMCOP_ZIP"
-
-
-log info "Unzip $ALEXA_ZIP"
-unzip $ZIP_FLAGS "$DPATH"/"$ALEXA_ZIP"
+if [ $DO_DOMCOP -gt 0 ]; then
+  log info "Download DomCom Top 10 Million Websites..."
+  wget -q https://www.domcop.com/files/top/top10milliondomains.csv.zip -O "$DPATH"/"$DOMCOP_ZIP"   && log debug "Successfully downloaded DomCom Top 10 million Websites to $DOMCOP_ZIP" || log err "Failed to download DomCom Top 10 million Websites"
+else
+  log info "Skipping DomCom Top 10 Million Websites"
+fi
+unzip $ZIP_FLAGS "$DPATH"/"$ALEXA_ZIP" && log info "$ALEXA_ZIP unzipped successfully" || log err "Failed to unzip $ALEXA_ZIP"
 mv top-1m.csv $ALEXA
-log info "Unzip $TRANCO_ZIP"
-unzip $ZIP_FLAGS "$DPATH"/"$TRANCO_ZIP"
-log info "Unzip $DOMCOP_ZIP"
-unzip $ZIP_FLAGS "$DPATH"/"$DOMCOP_ZIP"
+unzip $ZIP_FLAGS "$DPATH"/"$TRANCO_ZIP" && log info "$TRANCO_ZIP unzipped successfully" || log err "Failed to unzip $TRANCO_ZIP"
+unzip $ZIP_FLAGS "$DPATH"/"$DOMCOP_ZIP" && log info "$DOMCOP_ZIP unzipped successfully" || log err "Failed to unzip $DOMCOP_ZIP"
 cp "$DPATH"/"$MM" .
 
-log info "Extracting failed domains from previous runs"
-perl extract_failed.pl --file ../spf.log > ignore.txt
 
 
-if [ $ENABLE_TOP10MILLION -ge 1 ]
-then
-log info "Normalize $DOMCOP to normalize/01.txt"
-perl normalizer.pl --file=$DOMCOP > ./normalize/01.txt
-else
- log info "Skipping Top10 Million - $DOMCOP"
-fi
+log info "Starting to normalize data..."
+
+
 
 log info "Normalize  Majestic Million to normalize/02.txt"
 cat "$MM" | cut -d',' -f2,3  > ./normalize/tmp1
@@ -72,12 +77,19 @@ log info "Normalize Alexa to normalize/03.txt"
 perl normalizer.pl --file=$ALEXA > ./normalize/03.txt
 log info "Normalize Tranco to normalize/04.txt"
 perl normalizer.pl --file=$TRANCO > ./normalize/04.txt
-cat  normalize/0*.txt > $DATA
+
+tail -n +2 "normalize/02.txt" > $DATA
+if [ $DO_DOMCOP -gt 0 ]; then
+  log info "Normalize Top 10 Million Domains $DOMCOP to normalize/01.txt"
+  perl normalizer.pl --file=$DOMCOP > ./normalize/01.txt
+  tail -n +2 "normalize/01.txt" >> $DATA
+else
+  log info "Skipping DomCom Top 10 Million Websites"
+fi
+cat "normalize/03.txt" >> $DATA
+cat "normalize/04.txt" >> $DATA
 log info "Total Domain Count `wc -l $DATA`"
 log info "Merge and remove duplicates... "
-
 cat $DATA | sort -u | uniq > normalize/tmp
 mv normalize/tmp $DATA
 log info "Domains after cleanup `wc -l $DATA`"
-
-# sed 's/^[0-9]*/0/g'

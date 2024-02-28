@@ -1,5 +1,7 @@
 #!/bin/bash
 
+## https://github.com/Zordrak/bashlog
+
 set -uo pipefail;
 
 function _log_exception() {
